@@ -2232,17 +2232,12 @@ Instruction *InstCombiner::visitBranchInst(BranchInst &BI) {
   // Match:
   //    %0 = icmp eq CmpLHS CmpRHS
   //    br %0, TrueDest, FalseDest
-  errs() << "---------- hitting my optimization\n";
   if (match(&BI, m_Br(m_ICmp(IPred, m_Instruction(CmpLHS), m_Value(CmpRHS)),
                       TrueDest, FalseDest))) {
-      BI.getModule()->dump();
-      errs() << "made it through the match on: " << BI << "\n";
       // Make sure CmpLHS comes from an extract value instruction
       ExtractValueInst * ev = dyn_cast<ExtractValueInst>(CmpLHS);
       Value * OpLHS, * OpRHS;
       OpLHS = OpRHS = nullptr;
-      errs() << "got lhs: " << *CmpLHS << " | ev: " << ev << "\n";
-      if (ev) { errs() << "agg: " << *(ev->getAggregateOperand()) << "\n"; }
       // Make sure that the input to the extract value comes from the output
       // of an sadd_with_overflow intrinsic, and that the RHS of the subtraction
       // is on the RHS of the ICmps (because it's simpler, it should always be on
@@ -2251,14 +2246,12 @@ Instruction *InstCombiner::visitBranchInst(BranchInst &BI) {
                       m_Intrinsic<Intrinsic::ssub_with_overflow>(m_Value(OpLHS),
                                                                  m_Value(OpRHS)))
              && OpLHS == CmpRHS) {
-          errs() << "made it to inner match\n";
           // Now, we know that OpRHS is guaranteed to be zero in the TrueDest
           // block. So, we can look at all uses of OpRHS in TrueDest and change
           // them to a zero constant.
           for (Use & use : OpRHS->uses()) {
               Instruction * inst = dyn_cast<Instruction>(use.getUser());
               if (inst && inst->getParent() == TrueDest) {
-                  errs() << "replacing\n";
                   use.set(ConstantInt::get(OpRHS->getType(), 0, /*isSigned=*/true));
               }
           }
